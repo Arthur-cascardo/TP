@@ -3,53 +3,58 @@ import threading
 import time
 import socket
 import runge_kutta as rk
+import json
 
 
-def softPLC_thread(name):
-    logging.info("Thread %s: starting", name)
-    HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
-    PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
+href_list = []
+href_aux = []
+ht = []
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((HOST, PORT))
-        while True:
-            conn, addr = s.accept()
-            with conn:
-                while True:
-                    data = conn.recv(1024)
-                    if not data:
-                        logging.info("Thread %s: finishing", name)
-                        break
-                    conn.sendall(data)
+logging.info("Thread %s: starting")
+HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
+PORT = 52415  # Port to listen on (non-privileged ports are > 1023
 
 
-def process_thread(name):
-    logging.info("Thread %s: starting", name)
-    rk.rk4()
-    time.sleep(0.05)
-    logging.info("Thread %s: finishing", name)
+def getDataFromSynoptic():
+    #  Metodo para aquisição dos dados do sinotico via socket TCP/IP
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((HOST, PORT))
+    s.listen()
+    conn, addr = s.accept()
+    while True:
+        data = conn.recv(1024)
+        href_aux.append(float(json.loads(data)))
+        if not data:
+            logging.info("Thread %s: finishing")
+        if ht:
+            conn.sendall(json.dumps(ht[-1]).encode())
+        else:
+            conn.sendall(data)
 
 
-if __name__ == "__main__":
-    format = "%(asctime)s: %(message)s"
-    logging.basicConfig(format=format, level=logging.INFO,
-                        datefmt="%H:%M:%S")
+def softPLC_thread():
+    getDataFromSynoptic()
 
-    threads = list()
 
-    # softPLC_thread
-    logging.info("Main    : create and start thread %d.", 0)
-    x = threading.Thread(target=softPLC_thread, args=("softPLC_thread",))
-    threads.append(x)
-    x.start()
+def process_thread():
+    while True:
+        if href_aux:
+            res = rk.rk4(1, 1, href_aux[-1], 10) # Calcula pelo metodo Runge-Kutta
+            href_list.append(href_aux[-1])  # Acrescenta referencia na lista
+            href_aux.clear()
+            if res not in ht:  # Verifica se o resultado calculado ja esta na lista
+                ht.append(res)  # Adiciona se não estiver
+        time.sleep(0.05)
 
-    # process_thread
-    logging.info("Main    : create and start thread %d.", 1)
-    x = threading.Thread(target=process_thread, args=("process_thread",))
-    threads.append(x)
-    x.start()
 
-    for index, thread in enumerate(threads):
-        logging.info("Main    : before joining thread %d.", index)
-        thread.join()
-        logging.info("Main    : thread %d done", index)
+# process_thread
+logging.info("Main    : create and start thread %d.", 1)
+process = threading.Thread(target=process_thread, args=())
+process.start()
+
+# softPLC_thread
+logging.info("Main    : create and start thread %d.", 0)
+softPLC = threading.Thread(target=softPLC_thread, args=())
+softPLC.start()
+
+softPLC.join()
