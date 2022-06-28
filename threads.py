@@ -1,4 +1,5 @@
 import logging
+import math
 import threading
 import time
 import socket
@@ -9,6 +10,11 @@ import json
 href_list = []
 href_aux = []
 ht = []
+qout = []
+qin_0 = 1
+h_0 = 1
+period = 0.5
+
 
 logging.info("Thread %s: starting")
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
@@ -34,17 +40,18 @@ def getDataFromSynoptic():
 
 def softPLC_thread():
     getDataFromSynoptic()
+    time.sleep(2*period)
 
 
 def process_thread():
     while True:
         if href_aux:
-            res = rk.rk4(1, 1, href_aux[-1], 10) # Calcula pelo metodo Runge-Kutta
+            res = rk.rk4(qin_0, h_0, href_aux[-1], 10) # Calcula pelo metodo Runge-Kutta
             href_list.append(href_aux[-1])  # Acrescenta referencia na lista
             href_aux.clear()
-            if res not in ht:  # Verifica se o resultado calculado ja esta na lista
-                ht.append(res)  # Adiciona se não estiver
-        time.sleep(0.05)
+            ht.append(res)  # Adiciona resultado se não estiver
+            qout.append(0.5 * math.sqrt(ht[-1]))  # Calcula e salva vazão em função da altura h(t)
+            time.sleep(period)
 
 
 # process_thread
