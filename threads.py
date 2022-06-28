@@ -5,7 +5,7 @@ import time
 import socket
 import runge_kutta as rk
 import json
-
+import pid
 
 href_list = []
 href_aux = []
@@ -40,6 +40,7 @@ def getDataFromSynoptic():
 
 def softPLC_thread():
     getDataFromSynoptic()
+    pid.PID()
     time.sleep(2*period)
 
 
