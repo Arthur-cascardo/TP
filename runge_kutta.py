@@ -4,7 +4,7 @@ import math as m
 # RK-4 method python program
 
 # function to be solved
-def f(qin, h):
+def f(h, qin):
     r0 = 1
     r1 = 2
     total_height = 4

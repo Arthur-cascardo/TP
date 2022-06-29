@@ -6,9 +6,9 @@ PORT = 52415  # The port used by the server
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
+    data = input()
     while True:
-        data = input()
         s.sendall(bytes(json.dumps(data).encode()))
         data_rcv = json.loads(s.recv(1024))
-        print(f"Received {data_rcv}")
+        print(f"{data_rcv}")
 

@@ -5,15 +5,17 @@ import time
 import socket
 import runge_kutta as rk
 import json
-import pid
+from simple_pid import PID
 
 href_list = []
 href_aux = []
-ht = []
-qout = []
-qin_0 = 1
+ht = [1]
+qout = [0]
 h_0 = 1
-period = 0.5
+qin_0 = 1
+period = 0.05
+t = 0
+qin = 0
 
 
 logging.info("Thread %s: starting")
@@ -21,7 +23,10 @@ HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 PORT = 52415  # Port to listen on (non-privileged ports are > 1023
 
 
-def getDataFromSynoptic():
+
+
+
+def softPLC_thread():
     #  Metodo para aquisição dos dados do sinotico via socket TCP/IP
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((HOST, PORT))
@@ -33,24 +38,29 @@ def getDataFromSynoptic():
         if not data:
             logging.info("Thread %s: finishing")
         if ht:
-            conn.sendall(json.dumps(ht[-1]).encode())
+            pid = PID(1, 3, 0.05, setpoint=href_aux[-1])
+            pid.output_limits = (0, None)
+            qin = pid(ht[-1])
+            h_0 = ht[-1]
+            conn.sendall(json.dumps(f"Vazão de entrada: {qin}\n"
+                                    f"Vazão de saida: {qout[-1]}\n"
+                                    f"Altura referencia: {href_aux[-1]}\n"
+                                    f"Altura atual: {ht[-1]}").encode())
+            time.sleep(2 * period)
         else:
             conn.sendall(data)
+            time.sleep(2 * period)
 
-
-def softPLC_thread():
-    getDataFromSynoptic()
-    pid.PID()
-    time.sleep(2*period)
 
 
 def process_thread():
+    res = 0
     while True:
         if href_aux:
-            res = rk.rk4(qin_0, h_0, href_aux[-1], 10) # Calcula pelo metodo Runge-Kutta
+            qin = res
+            res = rk.rk4(h_0, qin, ht[-1], 2) # Calcula pelo metodo Runge-Kutta
             href_list.append(href_aux[-1])  # Acrescenta referencia na lista
-            href_aux.clear()
-            ht.append(res)  # Adiciona resultado se não estiver
+            ht.append(res)
             qout.append(0.5 * math.sqrt(ht[-1]))  # Calcula e salva vazão em função da altura h(t)
             time.sleep(period)
 
@@ -65,4 +75,3 @@ logging.info("Main    : create and start thread %d.", 0)
 softPLC = threading.Thread(target=softPLC_thread, args=())
 softPLC.start()
 
-softPLC.join()
