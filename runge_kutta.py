@@ -12,7 +12,7 @@ def f(h, qin):
 
     alpha = (r1 - r0) / total_height
     den = (m.pi * pow((r0 + alpha * h), 2))
-    return ((-cv * m.sqrt(h)) / den) + (1 / den) * qin
+    return ((-cv * m.sqrt(h)) / den) + ((1 / den) * qin)
 
 
 # RK-4 method

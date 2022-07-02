@@ -15,7 +15,8 @@ h_0 = 1
 qin_0 = 1
 period = 0.05
 t = 0
-qin = [1,1]
+qin = [1 ,1]
+
 
 
 logging.info("Thread %s: starting")
@@ -49,6 +50,13 @@ def softPLC_thread():
                                     f"Vazão de saida: {qout[-1]}\n"
                                     f"Altura referencia: {href_aux[-1]}\n"
                                     f"Altura atual: {ht[-1]}").encode())
+            f = open("historiador.txt", 'a')
+            f.write(f"Vazão de entrada: {qin[-1]}\n"
+                    f"Vazão de saida: {qout[-1]}\n"
+                    f"Altura referencia: {href_aux[-1]}\n"
+                    f"Altura atual: {ht[-1]}\n"
+                    f"----------//----------//----------\n")
+            f.close()
             time.sleep(2 * period)
         else:
             conn.sendall(data)
